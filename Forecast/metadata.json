@@ -1,0 +1,5 @@
+{
+  "name": "Forecasting MVP",
+  "description": "A web application to replace an Excel-based forecasting process. It centralizes data, simplifies forecast entry and updates, and provides a clear, real-time overview for administrators.",
+  "requestFramePermissions": []
+}
