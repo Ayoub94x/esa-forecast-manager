@@ -174,16 +174,20 @@ export const usePerformanceMonitor = (config: Partial<PerformanceConfig> = {}) =
       }
     };
 
-    const interval = setInterval(checkMemory, 5000); // Ogni 5 secondi
+    const interval = setInterval(checkMemory, 10000); // Ridotto a ogni 10 secondi per migliorare le performance
     return () => clearInterval(interval);
   }, [isMonitoring, fullConfig, addAlert]);
 
-  // Salva metriche nella cronologia
+  // Salva metriche nella cronologia con throttling
   useEffect(() => {
-    metricsHistory.current.push(metrics);
-    if (metricsHistory.current.length > fullConfig.sampleSize) {
-      metricsHistory.current.shift();
-    }
+    const throttleTimeout = setTimeout(() => {
+      metricsHistory.current.push(metrics);
+      if (metricsHistory.current.length > fullConfig.sampleSize) {
+        metricsHistory.current.shift();
+      }
+    }, 100); // Throttle di 100ms per evitare aggiornamenti troppo frequenti
+
+    return () => clearTimeout(throttleTimeout);
   }, [metrics, fullConfig.sampleSize]);
 
   // Calcola statistiche aggregate

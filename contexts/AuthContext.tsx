@@ -70,7 +70,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 await delay(retryDelay);
                 return loadUserProfileWithRetry(sessionUser, attempt + 1);
             } else {
-                throw new Error('Failed to load user profile after multiple attempts');
+                const errorMessage = profileError instanceof Error 
+                    ? profileError.message 
+                    : 'Failed to load user profile after multiple attempts';
+                setError(errorMessage);
+                throw new Error(errorMessage);
             }
         }
     }, []);
@@ -82,6 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             if (error) {
                 console.error('Session validation error:', error);
+                setError(`Session validation failed: ${error.message}`);
                 return false;
             }
             
@@ -97,6 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 
                 if (refreshError || !refreshData.session) {
                     console.error('Session refresh failed:', refreshError);
+                    setError(`Session refresh failed: ${refreshError?.message || 'Unknown error'}`);
                     return false;
                 }
                 
@@ -106,6 +112,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             return true;
         } catch (error) {
             console.error('Session validation failed:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Session validation failed';
+            setError(errorMessage);
             return false;
         }
     }, []);
@@ -147,10 +155,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setRetryCount(0);
         } catch (error) {
             console.error('Auth initialization error:', error);
-            setError(error instanceof Error ? error.message : 'Authentication initialization failed');
+            const errorMessage = error instanceof Error ? error.message : 'Authentication initialization failed';
+            setError(errorMessage);
             
             // Fallback: logout e redirect
-            await supabase.auth.signOut();
+            try {
+                await supabase.auth.signOut();
+            } catch (signOutError) {
+                console.error('Error during fallback signout:', signOutError);
+            }
             setUser(null);
             setAuthInitialized(true);
         } finally {
@@ -195,7 +208,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         }
                     } catch (error) {
                         console.error('Error handling auth state change:', error);
-                        setError(error instanceof Error ? error.message : 'Authentication error');
+                        const errorMessage = error instanceof Error ? error.message : 'Authentication error';
+                        setError(errorMessage);
+                        
+                        // In caso di errore critico, forza il logout
+                        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                            setUser(null);
+                        }
                     }
                 });
                 

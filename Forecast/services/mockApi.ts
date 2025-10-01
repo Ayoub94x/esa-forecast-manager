@@ -1,17 +1,17 @@
 import { User, Client, BusinessUnit, Forecast, UserRole, ForecastStatus, Comment } from '../types';
 
 let users: User[] = [
-    { id: 1, name: 'Admin User', email: 'admin@example.com', role: UserRole.Admin },
-    { id: 2, name: 'Data Entry User A', email: 'userA@example.com', role: UserRole.DataEntry, assignedClientIds: [101, 102], assignedBusinessUnitIds: [1, 2] },
-    { id: 3, name: 'Data Entry User B', email: 'userB@example.com', role: UserRole.DataEntry, assignedClientIds: [103, 104], assignedBusinessUnitIds: [3, 4] },
+    { id: '1', name: 'Admin User', email: 'admin@example.com', role: UserRole.Admin },
+    { id: '2', name: 'Data Entry User A', email: 'userA@example.com', role: UserRole.DataEntry, assignedClientIds: [101, 102], assignedBusinessUnitIds: [1, 2] },
+    { id: '3', name: 'Data Entry User B', email: 'userB@example.com', role: UserRole.DataEntry, assignedClientIds: [103, 104], assignedBusinessUnitIds: [3, 4] },
 ];
 
 let clients: Client[] = [
-    { id: 101, name: 'Cliente Alpha', businessUnitId: 1 },
-    { id: 102, name: 'Cliente Beta', businessUnitId: 2 },
-    { id: 103, name: 'Cliente Gamma', businessUnitId: 3 },
-    { id: 104, name: 'Cliente Delta', businessUnitId: 4 },
-    { id: 105, name: 'Cliente Epsilon', businessUnitId: 1 },
+    { id: 101, name: 'Cliente Alpha', businessUnitId: 1, paese: 'IT' },
+    { id: 102, name: 'Cliente Beta', businessUnitId: 2, paese: 'FR' },
+    { id: 103, name: 'Cliente Gamma', businessUnitId: 3, paese: 'DE' },
+    { id: 104, name: 'Cliente Delta', businessUnitId: 4, paese: 'ES' },
+    { id: 105, name: 'Cliente Epsilon', businessUnitId: 1, paese: 'IT' },
 ];
 
 let businessUnits: BusinessUnit[] = [
@@ -25,29 +25,43 @@ const currentMonth = new Date().getMonth() + 1;
 const currentYear = new Date().getFullYear();
 
 let forecasts: Forecast[] = [
-    { id: 1, month: currentMonth, year: currentYear, clientId: 101, businessUnitId: 1, declaredBudget: 52500, budget: 50000, forecast: 52000, userId: 2, lastModified: new Date().toISOString(), status: ForecastStatus.Draft },
-    { id: 2, month: currentMonth, year: currentYear, clientId: 102, businessUnitId: 2, declaredBudget: 78750, budget: 75000, forecast: 73000, userId: 2, lastModified: new Date().toISOString(), status: ForecastStatus.Draft },
-    { id: 3, month: currentMonth, year: currentYear, clientId: 103, businessUnitId: 3, declaredBudget: 126000, budget: 120000, forecast: 115000, userId: 3, lastModified: new Date().toISOString(), status: ForecastStatus.Draft },
-    { id: 4, month: currentMonth, year: currentYear, clientId: 104, businessUnitId: 4, declaredBudget: 92400, budget: 88000, forecast: 90000, userId: 3, lastModified: new Date().toISOString(), status: ForecastStatus.Approved },
-    { id: 6, month: currentMonth - 1, year: currentYear, clientId: 101, businessUnitId: 1, declaredBudget: 50400, budget: 48000, forecast: 49000, userId: 2, lastModified: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString(), status: ForecastStatus.Approved },
+    { id: 1, month: currentMonth, year: currentYear, clientId: 101, businessUnitId: 1, declaredBudget: 52500, budget: 50000, forecast: 52000, userId: '2', lastModified: new Date().toISOString(), status: ForecastStatus.Draft },
+    { id: 2, month: currentMonth, year: currentYear, clientId: 102, businessUnitId: 2, declaredBudget: 78750, budget: 75000, forecast: 73000, userId: '2', lastModified: new Date().toISOString(), status: ForecastStatus.Draft },
+    { id: 3, month: currentMonth, year: currentYear, clientId: 103, businessUnitId: 3, declaredBudget: 126000, budget: 120000, forecast: 115000, userId: '3', lastModified: new Date().toISOString(), status: ForecastStatus.Draft },
+    { id: 4, month: currentMonth, year: currentYear, clientId: 104, businessUnitId: 4, declaredBudget: 92400, budget: 88000, forecast: 90000, userId: '3', lastModified: new Date().toISOString(), status: ForecastStatus.Approved },
+    { id: 6, month: currentMonth - 1, year: currentYear, clientId: 101, businessUnitId: 1, declaredBudget: 50400, budget: 48000, forecast: 49000, userId: '2', lastModified: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString(), status: ForecastStatus.Approved },
 ];
 
 let comments: Comment[] = [
-    { id: 1, forecastId: 1, userId: 1, userName: 'Admin User', text: 'Looks good, but keep an eye on this.', timestamp: new Date(Date.now() - 86400000).toISOString() },
-    { id: 2, forecastId: 1, userId: 2, userName: 'Data Entry User A', text: 'Will do. I expect a slight increase next week.', timestamp: new Date().toISOString() },
-    { id: 3, forecastId: 4, userId: 3, userName: 'Data Entry User B', text: 'This one is locked in.', timestamp: new Date(Date.now() - 172800000).toISOString() },
+    { id: 1, forecastId: 1, userId: '1', userName: 'Admin User', text: 'Looks good, but keep an eye on this.', timestamp: new Date(Date.now() - 86400000).toISOString() },
+    { id: 2, forecastId: 1, userId: '2', userName: 'Data Entry User A', text: 'Will do. I expect a slight increase next week.', timestamp: new Date().toISOString() },
+    { id: 3, forecastId: 4, userId: '3', userName: 'Data Entry User B', text: 'This one is locked in.', timestamp: new Date(Date.now() - 172800000).toISOString() },
 ];
 
 const simulateDelay = <T,>(data: T): Promise<T> => new Promise(resolve => setTimeout(() => resolve(JSON.parse(JSON.stringify(data))), 500));
 
 // --- User API ---
 export const getUsers = () => simulateDelay(users);
-export const getUserById = (id: number) => simulateDelay(users.find(u => u.id === id));
+export const getUserById = (id: string) => simulateDelay(users.find(u => u.id === id));
 
 // --- Client API ---
-export const getClients = () => simulateDelay(clients);
+export const getClients = (params: { businessUnitIds?: number[]; countries?: string[]; search?: string } = {}) => {
+    let result = [...clients];
+    const { businessUnitIds, countries, search } = params;
+    if (businessUnitIds && businessUnitIds.length > 0) {
+        result = result.filter(c => c.businessUnitId && businessUnitIds.includes(c.businessUnitId));
+    }
+    if (countries && countries.length > 0) {
+        result = result.filter(c => c.paese && countries.includes(c.paese));
+    }
+    if (search && search.trim()) {
+        const term = search.toLowerCase();
+        result = result.filter(c => c.name.toLowerCase().includes(term));
+    }
+    return simulateDelay(result);
+}
 export const addClient = (name: string, businessUnitId: number | null) => {
-    const newClient: Client = { id: Date.now(), name, businessUnitId };
+    const newClient: Client = { id: Date.now(), name, businessUnitId, paese: 'IT' };
     clients.push(newClient);
     return simulateDelay(newClient);
 }
@@ -107,7 +121,7 @@ export const getForecasts = (user: User, month: number, year: number) => {
 export const getAllForecasts = () => simulateDelay(forecasts);
 
 
-export const updateForecastValue = (forecastId: number, field: 'budget' | 'forecast' | 'declaredBudget', value: number, userId: number) => {
+export const updateForecastValue = (forecastId: number, field: 'budget' | 'forecast' | 'declaredBudget', value: number, userId: string) => {
     const forecast = forecasts.find(f => f.id === forecastId);
     if (forecast) {
         forecast[field] = value;
@@ -119,7 +133,7 @@ export const updateForecastValue = (forecastId: number, field: 'budget' | 'forec
     return Promise.reject('Forecast not found');
 };
 
-export const updateForecastStatus = (forecastId: number, status: ForecastStatus, userId: number) => {
+export const updateForecastStatus = (forecastId: number, status: ForecastStatus, userId: string) => {
     const forecast = forecasts.find(f => f.id === forecastId);
     if (forecast) {
         forecast.status = status;
@@ -158,14 +172,14 @@ export const getCommentsByForecastId = (forecastId: number) => {
     return simulateDelay(forecastComments);
 };
 
-export const addComment = (forecastId: number, text: string, userId: number, userName: string) => {
+export const addComment = (forecastId: number, text: string, userId: string, userName: string) => {
     const newComment: Comment = {
         id: Date.now(),
         forecastId,
         userId,
         userName,
         text,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
     };
     comments.push(newComment);
     return simulateDelay(newComment);

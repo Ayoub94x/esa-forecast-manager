@@ -14,6 +14,7 @@ const Header: React.FC = () => {
     const { theme, setTheme } = useTheme();
     const themeMenuRef = useRef<HTMLDivElement>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
 
     const handleLogout = async () => {
         try {
@@ -40,6 +41,9 @@ const Header: React.FC = () => {
             }
             if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
                 setIsUserMenuOpen(false);
+            }
+            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -231,15 +235,15 @@ const Header: React.FC = () => {
                     <div className="md:hidden">
                         <button 
                             onClick={toggleMobileMenu}
-                            className="inline-flex items-center justify-center p-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all duration-200"
+                            className="inline-flex items-center justify-center px-3 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 transition-all duration-200 border border-slate-300 dark:border-slate-600"
                             aria-expanded={isMenuOpen}
                             aria-label="Apri menu di navigazione"
                         >
                             <span className="sr-only">Apri menu principale</span>
                             {isMenuOpen ? (
-                                <XMarkIcon className="block h-6 w-6 transition-transform duration-200 rotate-90" />
+                                <XMarkIcon className="block h-4 w-4 transition-transform duration-200 rotate-90" />
                             ) : (
-                                <Bars3Icon className="block h-6 w-6 transition-transform duration-200" />
+                                <Bars3Icon className="block h-4 w-4 transition-transform duration-200" />
                             )}
                         </button>
                     </div>
@@ -248,7 +252,10 @@ const Header: React.FC = () => {
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-                <div className="md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 animate-fade-in">
+                <div 
+                    ref={mobileMenuRef}
+                    className="md:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/50 animate-fade-in"
+                >
                     {/* Navigation Links */}
                     <nav className="px-4 pt-4 pb-3 space-y-2" role="navigation" aria-label="Navigazione mobile">
                         {React.Children.map(commonLinks.props.children, (child, index) => (

@@ -1,0 +1,167 @@
+/* Stili personalizzati per le barre di scorrimento */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.4); /* slate-400 with opacity */
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.6); /* slate-400 with higher opacity */
+}
+
+.custom-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Dark mode */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.4); /* slate-600 with opacity */
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(71, 85, 105, 0.6); /* slate-600 with higher opacity */
+}
+
+/* Firefox */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+.dark .custom-scrollbar {
+    scrollbar-color: rgba(71, 85, 105, 0.4) transparent;
+}
+
+/* Stili specifici per i dropdown dei filtri */
+.filter-dropdown-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.filter-dropdown-scrollbar::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.5); /* slate-100 with opacity */
+    border-radius: 3px;
+    margin: 4px 0;
+}
+
+.filter-dropdown-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.5); /* slate-400 with opacity */
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.filter-dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.7); /* slate-500 with opacity */
+    transform: scaleX(1.2);
+}
+
+/* Dark mode per i dropdown */
+.dark .filter-dropdown-scrollbar::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5); /* slate-800 with opacity */
+}
+
+.dark .filter-dropdown-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.5); /* slate-600 with opacity */
+}
+
+.dark .filter-dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.7); /* slate-500 with opacity */
+}
+
+/* Firefox per i dropdown */
+.filter-dropdown-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.5) rgba(241, 245, 249, 0.5);
+}
+
+.dark .filter-dropdown-scrollbar {
+    scrollbar-color: rgba(71, 85, 105, 0.5) rgba(30, 41, 59, 0.5);
+}
+
+/* Animazioni smooth per lo scrolling */
+.smooth-scroll {
+    scroll-behavior: smooth;
+}
+
+/* Stili per contenitori scrollabili con fade effect */
+.scrollable-container {
+    position: relative;
+}
+
+.scrollable-container::before,
+.scrollable-container::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 8px;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.2s ease;
+}
+
+.scrollable-container::before {
+    top: 0;
+    background: linear-gradient(to bottom, 
+        rgba(255, 255, 255, 1) 0%, 
+        rgba(255, 255, 255, 0) 100%);
+}
+
+.scrollable-container::after {
+    bottom: 0;
+    background: linear-gradient(to top, 
+        rgba(255, 255, 255, 1) 0%, 
+        rgba(255, 255, 255, 0) 100%);
+}
+
+/* Dark mode per fade effect */
+.dark .scrollable-container::before {
+    background: linear-gradient(to bottom, 
+        rgba(30, 41, 59, 1) 0%, 
+        rgba(30, 41, 59, 0) 100%);
+}
+
+.dark .scrollable-container::after {
+    background: linear-gradient(to top, 
+        rgba(30, 41, 59, 1) 0%, 
+        rgba(30, 41, 59, 0) 100%);
+}
+
+/* Utility classes */
+.hide-scrollbar {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+}
+
+.show-scrollbar-on-hover {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.show-scrollbar-on-hover::-webkit-scrollbar {
+    width: 0px;
+    transition: width 0.2s ease;
+}
+
+.show-scrollbar-on-hover:hover {
+    scrollbar-width: thin;
+}
+
+.show-scrollbar-on-hover:hover::-webkit-scrollbar {
+    width: 6px;
+}

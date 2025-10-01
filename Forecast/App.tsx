@@ -10,6 +10,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ForecastPage from './pages/ForecastPage';
 import AdminManagementPage from './pages/AdminManagementPage';
+import BusinessUnitManagementPage from './pages/BusinessUnitManagementPage';
+import ClientManagementPage from './pages/ClientManagementPage';
 import Header from './components/Header';
 import { UserRole } from './types';
 import NotFoundPage from './pages/NotFoundPage';
@@ -120,8 +122,8 @@ const Main: React.FC = () => {
                             
                             <Route element={<AdminRoute />}>
                                 <Route path="/dashboard" element={<DashboardPage />} />
-                                <Route path="/admin/clients" element={<AdminManagementPage entityType="client" />} />
-                                <Route path="/admin/bus" element={<AdminManagementPage entityType="businessUnit" />} />
+                            <Route path="/admin/clients" element={<ClientManagementPage />} />
+                            <Route path="/admin/bus" element={<BusinessUnitManagementPage />} />
                             </Route>
 
                             <Route path="/" element={user.role === UserRole.Admin ? <Navigate to="/dashboard" /> : <Navigate to="/forecast" />} />

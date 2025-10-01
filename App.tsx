@@ -6,13 +6,17 @@ import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FilterProvider } from './contexts/FilterContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ForecastPage from './pages/ForecastPage';
 import AdminManagementPage from './pages/AdminManagementPage';
+import BusinessUnitManagementPage from './pages/BusinessUnitManagementPage';
+import ClientManagementPage from './pages/ClientManagementPage';
 import Header from './components/Header';
 import { UserRole } from './types';
 import NotFoundPage from './pages/NotFoundPage';
+import './styles/ErrorBoundary.css';
 
 // Componente per la schermata di caricamento migliorata
 const LoadingScreen: React.FC = () => {
@@ -74,17 +78,19 @@ const AuthErrorFallback: React.FC<AuthErrorFallbackProps> = ({ error, onRetry, c
 
 const App: React.FC = () => {
     return (
-        <ThemeProvider>
-            <AuthProvider>
-                <ToastProvider>
-                    <FilterProvider>
-                        <HashRouter>
-                            <Main />
-                        </HashRouter>
-                    </FilterProvider>
-                </ToastProvider>
-            </AuthProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+            <ThemeProvider>
+                <AuthProvider>
+                    <ToastProvider>
+                        <FilterProvider>
+                            <HashRouter>
+                                <Main />
+                            </HashRouter>
+                        </FilterProvider>
+                    </ToastProvider>
+                </AuthProvider>
+            </ThemeProvider>
+        </ErrorBoundary>
     );
 };
 
@@ -123,8 +129,8 @@ const Main: React.FC = () => {
                             
                             <Route element={<AdminRoute />}>
                                 <Route path="/dashboard" element={<DashboardPage />} />
-                                <Route path="/admin/clients" element={<AdminManagementPage entityType="client" />} />
-                                <Route path="/admin/bus" element={<AdminManagementPage entityType="businessUnit" />} />
+                            <Route path="/admin/clients" element={<ClientManagementPage />} />
+                            <Route path="/admin/bus" element={<BusinessUnitManagementPage />} />
                             </Route>
 
                             <Route path="/" element={user.role === UserRole.Admin ? <Navigate to="/dashboard" /> : <Navigate to="/forecast" />} />

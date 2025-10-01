@@ -195,8 +195,8 @@ export const getAdvancedForecasts = async (
     if (params.countries && params.countries.length > 0) {
       filteredForecasts = filteredForecasts.filter(forecast => {
         const forecastData = forecasts?.find(f => f.id === forecast.id);
-        return forecastData?.clients?.paese && 
-               params.countries!.includes(forecastData.clients.paese);
+        return (forecastData as any)?.clients?.paese && 
+               params.countries!.includes((forecastData as any).clients.paese);
       });
     }
 
@@ -208,9 +208,9 @@ export const getAdvancedForecasts = async (
         if (!forecastData) return false;
 
         const searchableText = [
-          forecastData.clients?.name,
-          forecastData.business_units?.name,
-          forecastData.profiles?.full_name,
+          (forecastData as any).clients?.name,
+          (forecastData as any).business_units?.name,
+          (forecastData as any).profiles?.full_name,
           forecast.status
         ].filter(Boolean).join(' ').toLowerCase();
 

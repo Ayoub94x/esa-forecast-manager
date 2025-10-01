@@ -132,6 +132,7 @@ export const getClients = async (): Promise<Client[]> => {
       id,
       name,
       business_unit_id,
+      paese,
       business_units (
         id,
         name
@@ -146,14 +147,15 @@ export const getClients = async (): Promise<Client[]> => {
   return clients.map(client => ({
     id: client.id,
     name: client.name,
-    businessUnitId: client.business_unit_id
+    businessUnitId: client.business_unit_id,
+    paese: client.paese || 'IT'
   }));
 };
 
 export const addClient = async (name: string, businessUnitId: number | null): Promise<Client> => {
   const { data, error } = await supabase
     .from('clients')
-    .insert([{ name, business_unit_id: businessUnitId }])
+    .insert([{ name, business_unit_id: businessUnitId, paese: 'IT' }])
     .select()
     .single();
 
@@ -165,14 +167,15 @@ export const addClient = async (name: string, businessUnitId: number | null): Pr
   return {
     id: data.id,
     name: data.name,
-    businessUnitId: data.business_unit_id
+    businessUnitId: data.business_unit_id,
+    paese: data.paese || 'IT'
   };
 };
 
 export const updateClient = async (id: number, name: string, businessUnitId: number | null): Promise<Client> => {
   const { data, error } = await supabase
     .from('clients')
-    .update({ name, business_unit_id: businessUnitId })
+    .update({ name, business_unit_id: businessUnitId, paese: 'IT' })
     .eq('id', id)
     .select()
     .single();
@@ -185,7 +188,8 @@ export const updateClient = async (id: number, name: string, businessUnitId: num
   return {
     id: data.id,
     name: data.name,
-    businessUnitId: data.business_unit_id
+    businessUnitId: data.business_unit_id,
+    paese: data.paese || 'IT'
   };
 };
 
@@ -519,7 +523,7 @@ export const getCommentsByForecastId = async (forecastId: number): Promise<Comme
     id: comment.id,
     forecastId: comment.forecast_id,
     userId: comment.user_id,
-    userName: comment.profiles?.full_name || 'Unknown User',
+    userName: (comment.profiles as any)?.full_name || 'Unknown User',
     text: comment.text,
     timestamp: comment.created_at
   }));
@@ -559,7 +563,7 @@ export const addComment = async (
     id: data.id,
     forecastId: data.forecast_id,
     userId: data.user_id,
-    userName: data.profiles?.full_name || userName,
+    userName: (data.profiles as any)?.full_name || userName,
     text: data.text,
     timestamp: data.created_at
   };
@@ -591,7 +595,7 @@ export const updateComment = async (commentId: number, text: string): Promise<Co
     id: data.id,
     forecastId: data.forecast_id,
     userId: data.user_id,
-    userName: data.profiles?.full_name || 'Unknown User',
+    userName: (data.profiles as any)?.full_name || 'Unknown User',
     text: data.text,
     timestamp: data.created_at
   };

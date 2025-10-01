@@ -523,7 +523,7 @@ export const getCommentsByForecastId = async (forecastId: number): Promise<Comme
     id: comment.id,
     forecastId: comment.forecast_id,
     userId: comment.user_id,
-    userName: comment.profiles?.full_name || 'Unknown User',
+    userName: (comment.profiles as any)?.full_name || 'Unknown User',
     text: comment.text,
     timestamp: comment.created_at
   }));
@@ -563,7 +563,7 @@ export const addComment = async (
     id: data.id,
     forecastId: data.forecast_id,
     userId: data.user_id,
-    userName: data.profiles?.full_name || userName,
+    userName: (data.profiles as any)?.full_name || userName,
     text: data.text,
     timestamp: data.created_at
   };
@@ -595,7 +595,7 @@ export const updateComment = async (commentId: number, text: string): Promise<Co
     id: data.id,
     forecastId: data.forecast_id,
     userId: data.user_id,
-    userName: data.profiles?.full_name || 'Unknown User',
+    userName: (data.profiles as any)?.full_name || 'Unknown User',
     text: data.text,
     timestamp: data.created_at
   };

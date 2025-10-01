@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { FilterQuery, DateRange } from '../types/filters';
 import { ForecastStatus } from '../types';
+import { DataTypeSelection } from '../components/filters/DataTypeSelector';
 
 interface FilterContextType {
     filters: FilterQuery;
@@ -16,6 +17,10 @@ interface FilterContextType {
     setStatuses: (statuses: ForecastStatus[]) => void;
     setCountries: (countries: string[]) => void;
     setTextSearch: (search: string) => void;
+    
+    // Selezione tipi di dati
+    dataTypeSelection: DataTypeSelection;
+    setDataTypeSelection: (selection: DataTypeSelection) => void;
 }
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
@@ -43,6 +48,11 @@ interface FilterProviderProps {
 
 export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
     const [filters, setFilters] = useState<FilterQuery>(defaultFilters);
+    const [dataTypeSelection, setDataTypeSelectionState] = useState<DataTypeSelection>({
+        budget: true,
+        forecast: true,
+        declaredBudget: true
+    });
 
     const updateFilters = useCallback((newFilters: Partial<FilterQuery>) => {
         setFilters(prev => ({
@@ -105,6 +115,10 @@ export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
         updateFilters({ textSearch });
     }, [updateFilters]);
 
+    const setDataTypeSelection = useCallback((selection: DataTypeSelection) => {
+        setDataTypeSelectionState(selection);
+    }, []);
+
     const value: FilterContextType = {
         filters,
         updateFilters,
@@ -116,7 +130,9 @@ export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
         setUserIds,
         setStatuses,
         setCountries,
-        setTextSearch
+        setTextSearch,
+        dataTypeSelection,
+        setDataTypeSelection
     };
 
     return (

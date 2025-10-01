@@ -5,6 +5,9 @@ import SummaryCard from '../components/SummaryCard';
 import ForecastBarChart from '../components/ForecastBarChart';
 import ForecastLineChart from '../components/ForecastLineChart';
 import CountryFilter from '../components/filters/CountryFilter';
+import DataTypeSelector from '../components/filters/DataTypeSelector';
+import BusinessUnitFilter from '../components/filters/BusinessUnitFilter';
+import DateFilter from '../components/filters/DateFilter';
 import { useFilters } from '../contexts/FilterContext';
 import { useFilteredData } from '../hooks/useFilteredData';
 
@@ -19,43 +22,40 @@ const DashboardPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     // Utilizzo del FilterContext per gestire tutti i filtri
-    const { filters, updateFilters } = useFilters();
+    const { filters, updateFilters, dataTypeSelection, setDataTypeSelection, setBusinessUnitIds } = useFilters();
     
     // Use the filtered data hook
     const { data: filteredForecasts, loading: filterLoading } = useFilteredData(forecasts);
 
-    // Date range state (mantenuto per compatibilità con il codice esistente)
+    // Date range state (keeping for data fetching compatibility)
     const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>(() => {
         const end = new Date();
-        const start = new Date();
-        start.setDate(end.getDate() - 29); // Default to last 30 days
+        const start = new Date(end.getFullYear(), 0, 1);
         return { start, end };
     });
 
-    // Filter state
-    const [selectedBuIds, setSelectedBuIds] = useState<number[]>([]);
-    const [isBuFilterOpen, setIsBuFilterOpen] = useState(false);
-    const buFilterRef = useRef<HTMLDivElement>(null);
+    // Date filter state
+    const [selectedDateRange, setSelectedDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({
+        startDate: new Date(new Date().getFullYear(), 0, 1),
+        endDate: new Date()
+    });
 
-    // Date picker state
-    const [isDateRangePickerOpen, setIsDateRangePickerOpen] = useState(false);
-    const datePickerRef = useRef<HTMLDivElement>(null);
-    const [tempDateRange, setTempDateRange] = useState(dateRange);
+    // Sync selectedDateRange with dateRange for data fetching
+    useEffect(() => {
+        setDateRange({
+            start: selectedDateRange.startDate || new Date(),
+            end: selectedDateRange.endDate || new Date()
+        });
+    }, [selectedDateRange]);
 
-    // Note: FilterContext synchronization is handled by useFilteredData hook
-
+    // Click outside handler for filter dropdowns
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-                setIsDateRangePickerOpen(false);
-            }
-            if (buFilterRef.current && !buFilterRef.current.contains(event.target as Node)) {
-                setIsBuFilterOpen(false);
-            }
+            // Handled by individual filter components
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [datePickerRef, buFilterRef]);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
 
     useEffect(() => {
@@ -101,16 +101,16 @@ const DashboardPage: React.FC = () => {
             const isDateOverlap = monthStart <= end && monthEnd >= start;
             
             // Check if BU filter is applied
-            const isBuMatch = selectedBuIds.length === 0 || selectedBuIds.includes(f.businessUnitId);
+            const isBuMatch = filters.businessUnitIds.length === 0 || filters.businessUnitIds.includes(f.businessUnitId);
 
             return isDateOverlap && isBuMatch;
         });
-    }, [filteredForecasts, dateRange, selectedBuIds]);
+    }, [filteredForecasts, dateRange, filters.businessUnitIds]);
 
     const summaryData = useMemo(() => {
         const budget = forecastsInRange.reduce((sum, f) => sum + (f.budget || 0), 0);
         const forecast = forecastsInRange.reduce((sum, f) => sum + (f.forecast || 0), 0);
-        const declaredBudget = forecastsInRange.reduce((sum, f) => sum + (f.declared_budget || 0), 0);
+        const declaredBudget = forecastsInRange.reduce((sum, f) => sum + (f.declaredBudget || 0), 0);
         const deltaValue = budget > 0 ? ((forecast - budget) / budget) * 100 : 0;
         return { 
             totalBudget: budget, 
@@ -127,7 +127,7 @@ const DashboardPage: React.FC = () => {
             const current = dataMap.get(buName) || { budget: 0, forecast: 0, declaredBudget: 0 };
             current.budget += f.budget || 0;
             current.forecast += f.forecast || 0;
-            current.declaredBudget += f.declared_budget || 0;
+            current.declaredBudget += f.declaredBudget || 0;
             dataMap.set(buName, current);
         });
         return Array.from(dataMap.entries()).map(([name, values]) => ({ name, ...values }));
@@ -142,7 +142,7 @@ const DashboardPage: React.FC = () => {
             const current = monthDataMap.get(monthKey) || { budget: 0, forecast: 0, declaredBudget: 0 };
             current.budget += f.budget || 0;
             current.forecast += f.forecast || 0;
-            current.declaredBudget += f.declared_budget || 0;
+            current.declaredBudget += f.declaredBudget || 0;
             monthDataMap.set(monthKey, current);
         });
     
@@ -192,117 +192,12 @@ const DashboardPage: React.FC = () => {
     }
 
     const renderEmptyChartState = () => (
-        <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400">
+        <div className="flex flex-col items-center justify-center h-full text-center text-slate-500 dark:text-slate-400 p-4">
             <ChartBarIcon className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-2"/>
-            <p className="font-semibold">Nessun dato da visualizzare</p>
+            <p className="font-semibold">Nessun dato disponibile</p>
             <p className="text-sm">Prova a modificare i filtri o l'intervallo di date.</p>
         </div>
     );
-
-    const renderBuFilter = () => {
-        const handleBuSelection = (buId: number) => {
-            setSelectedBuIds(prev =>
-                prev.includes(buId)
-                    ? prev.filter(id => id !== buId)
-                    : [...prev, buId]
-            );
-        };
-        const handleSelectAllBus = () => setSelectedBuIds(businessUnits.map(bu => bu.id));
-        const handleClearAllBus = () => setSelectedBuIds([]);
-
-        return (
-            <div ref={buFilterRef} className="relative">
-                 <button onClick={() => setIsBuFilterOpen(prev => !prev)} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    <FunnelIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <span>
-                        {selectedBuIds.length === 0 ? "Tutte le Business Unit" : `${selectedBuIds.length} BU selezionate`}
-                    </span>
-                 </button>
-                 {isBuFilterOpen && (
-                    <div className="absolute top-full mt-2 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-20 w-64 animate-scale-up">
-                        <div className="flex justify-between items-center p-3 border-b border-slate-200 dark:border-slate-700">
-                            <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filtra per BU</h5>
-                            <div>
-                                <button onClick={handleSelectAllBus} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline mr-3">Seleziona tutto</button>
-                                <button onClick={handleClearAllBus} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">Pulisci</button>
-                            </div>
-                        </div>
-                        <div className="p-1 max-h-60 overflow-y-auto">
-                            {businessUnits.map(bu => (
-                                <label key={bu.id} className="flex items-center space-x-2 p-2 m-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
-                                    <input type="checkbox" checked={selectedBuIds.includes(bu.id)} onChange={() => handleBuSelection(bu.id)} className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                                    <span className="text-sm text-slate-800 dark:text-slate-200">{bu.name}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        )
-    };
-
-    const renderDateRangePicker = () => {
-        const predefinedRanges: { label: string; days?: number; period?: 'year' }[] = [
-            { label: 'Ultimi 7 Giorni', days: 6 },
-            { label: 'Ultimi 30 Giorni', days: 29 },
-            { label: 'Ultimi 90 Giorni', days: 89 },
-            { label: 'Quest\'anno', period: 'year' },
-        ];
-        
-        const handleSetPredefinedRange = (config: { days?: number; period?: 'year' }) => {
-            const end = new Date();
-            let start = new Date();
-            if (config.days !== undefined) {
-                start.setDate(end.getDate() - config.days);
-            } else if (config.period === 'year') {
-                start = new Date(end.getFullYear(), 0, 1);
-            }
-            setTempDateRange({ start, end });
-        };
-        
-        const handleApply = () => {
-            setDateRange(tempDateRange);
-            setIsDateRangePickerOpen(false);
-        };
-    
-        return (
-            <div ref={datePickerRef} className="relative">
-                <button onClick={() => { setTempDateRange(dateRange); setIsDateRangePickerOpen(p => !p); }} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    <CalendarDaysIcon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <span>{formatDate(dateRange.start)} - {formatDate(dateRange.end)}</span>
-                </button>
-    
-                {isDateRangePickerOpen && (
-                    <div className="absolute top-full mt-2 right-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-20 w-80 p-4 animate-scale-up">
-                        <div className="flex justify-between items-center mb-3">
-                           <h4 className="font-semibold text-slate-800 dark:text-slate-100">Seleziona Intervallo</h4>
-                           <button onClick={() => setIsDateRangePickerOpen(false)} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"><XMarkIcon className="w-5 h-5 text-slate-500" /></button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                            {predefinedRanges.map(range => (
-                                <button key={range.label} onClick={() => handleSetPredefinedRange(range)} className="text-center text-xs px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                    {range.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="space-y-2">
-                            <div>
-                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Data Inizio</label>
-                                <input type="date" value={formatDateForInput(tempDateRange.start)} onChange={e => setTempDateRange(prev => ({ ...prev, start: new Date(e.target.value) }))} className="w-full mt-1 p-1.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Data Fine</label>
-                                <input type="date" value={formatDateForInput(tempDateRange.end)} onChange={e => setTempDateRange(prev => ({ ...prev, end: new Date(e.target.value) }))} className="w-full mt-1 p-1.5 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
-                            </div>
-                        </div>
-                        <div className="flex justify-end mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                            <button onClick={handleApply} className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">Applica</button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     return (
         <div className="w-full space-y-6">
@@ -313,33 +208,53 @@ const DashboardPage: React.FC = () => {
                         Dati dal {formatDate(dateRange.start)} al {formatDate(dateRange.end)}
                     </p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {renderBuFilter()}
+                <div className="flex items-center gap-3 flex-wrap">
+                    <DataTypeSelector 
+                        selection={dataTypeSelection}
+                        onChange={setDataTypeSelection}
+                    />
+                    <BusinessUnitFilter
+                        selectedBusinessUnits={filters.businessUnitIds}
+                        onBusinessUnitChange={setBusinessUnitIds}
+                        disabled={loading || filterLoading}
+                    />
                     <CountryFilter 
                         selectedCountries={filters.countries || []}
                         onCountryChange={(countries) => updateFilters({ countries })}
                     />
-                    {renderDateRangePicker()}
+                    <DateFilter
+                        selectedDateRange={selectedDateRange}
+                        onDateRangeChange={setSelectedDateRange}
+                    />
                 </div>
             </div>
             
             <div className="space-y-6 animate-fade-in">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <SummaryCard title="Total BDG Attivo" value={formatCurrency(summaryData.totalBudget)} icon={<CurrencyDollarIcon />} />
-                    <SummaryCard title="Total Fcast Rolling" value={formatCurrency(summaryData.totalForecast)} icon={<DocumentChartBarIcon />} />
-                    <SummaryCard title="Performance" value={`${summaryData.delta.value > 0 ? '+' : ''}${summaryData.delta.value.toFixed(2)}%`} icon={<ArrowTrendingUpIcon />} delta={summaryData.delta}/>
+                    {dataTypeSelection?.budget && (
+                        <SummaryCard title="Total BDG Attivo" value={formatCurrency(summaryData.totalBudget)} icon={<CurrencyDollarIcon />} />
+                    )}
+                    {dataTypeSelection?.forecast && (
+                        <SummaryCard title="Total Fcast Rolling" value={formatCurrency(summaryData.totalForecast)} icon={<DocumentChartBarIcon />} />
+                    )}
+                    {dataTypeSelection?.declaredBudget && (
+                        <SummaryCard title="Total BDG Dichiarato" value={formatCurrency(summaryData.totalDeclaredBudget)} icon={<TableCellsIcon />} />
+                    )}
+                    {(dataTypeSelection?.budget && dataTypeSelection?.forecast) && (
+                        <SummaryCard title="Performance" value={`${summaryData.delta.value > 0 ? '+' : ''}${summaryData.delta.value.toFixed(2)}%`} icon={<ArrowTrendingUpIcon />} delta={summaryData.delta}/>
+                    )}
                 </div>
                 
 
                 
                 <div className="grid grid-cols-1 gap-6">
                      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg h-[28rem] flex flex-col transition-colors">
-                       {lineChartData.some(d => d.budget > 0 || d.forecast > 0) ? <ForecastLineChart data={lineChartData} /> : renderEmptyChartState()}
+                       {lineChartData.some(d => d.budget > 0 || d.forecast > 0 || d.declaredBudget > 0) ? <ForecastLineChart data={lineChartData} dataTypeSelection={dataTypeSelection} /> : renderEmptyChartState()}
                     </div>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg h-[28rem] flex flex-col transition-colors">
-                        {barChartData.length > 0 ? <ForecastBarChart data={barChartData} /> : renderEmptyChartState()}
+                        {barChartData.length > 0 ? <ForecastBarChart data={barChartData} dataTypeSelection={dataTypeSelection} /> : renderEmptyChartState()}
                     </div>
 
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col transition-colors">

@@ -21,6 +21,7 @@ export interface Client {
     id: number;
     name: string;
     businessUnitId: number | null;
+    paese: string; // Codice ISO del paese (es. "IT", "FR", "DE")
 }
 
 export interface BusinessUnit {
