@@ -120,6 +120,34 @@ const DashboardPage: React.FC = () => {
         };
     }, [forecastsInRange]);
 
+    // Calcolo dinamico della performance in base ai tipi selezionati
+    const performanceDelta = useMemo(() => {
+        if (!dataTypeSelection) return null;
+        const { budget, forecast, declaredBudget } = dataTypeSelection;
+        const selectedCount = [budget, forecast, declaredBudget].filter(Boolean).length;
+        if (selectedCount < 2) return null;
+
+        let base = 0;
+        let compare = 0;
+
+        // Priorità: confronto basato sui tipi selezionati
+        if (forecast && declaredBudget) {
+            base = summaryData.totalDeclaredBudget;
+            compare = summaryData.totalForecast;
+        } else if (forecast && budget) {
+            base = summaryData.totalBudget;
+            compare = summaryData.totalForecast;
+        } else if (declaredBudget && budget) {
+            base = summaryData.totalBudget;
+            compare = summaryData.totalDeclaredBudget;
+        } else {
+            return null;
+        }
+
+        const value = base > 0 ? ((compare - base) / base) * 100 : 0;
+        return { value, isPositive: value >= 0 };
+    }, [dataTypeSelection, summaryData]);
+
     const barChartData = useMemo(() => {
         const dataMap = new Map<string, { budget: number, forecast: number, declaredBudget: number }>();
         forecastsInRange.forEach(f => {
@@ -240,8 +268,8 @@ const DashboardPage: React.FC = () => {
                     {dataTypeSelection?.declaredBudget && (
                         <SummaryCard title="Total BDG Dichiarato" value={formatCurrency(summaryData.totalDeclaredBudget)} icon={<TableCellsIcon />} />
                     )}
-                    {(dataTypeSelection?.budget && dataTypeSelection?.forecast) && (
-                        <SummaryCard title="Performance" value={`${summaryData.delta.value > 0 ? '+' : ''}${summaryData.delta.value.toFixed(2)}%`} icon={<ArrowTrendingUpIcon />} delta={summaryData.delta}/>
+                    {performanceDelta && (
+                        <SummaryCard title="Performance" value={`${performanceDelta.value > 0 ? '+' : ''}${performanceDelta.value.toFixed(2)}%`} icon={<ArrowTrendingUpIcon />} delta={performanceDelta}/>
                     )}
                 </div>
                 

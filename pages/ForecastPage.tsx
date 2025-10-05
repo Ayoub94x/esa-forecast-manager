@@ -4,6 +4,7 @@ import * as api from '../services/supabaseApi';
 import { Forecast, Client, BusinessUnit, ForecastStatus, UserRole } from '../types';
 import { useToast } from '../hooks/useToast';
 import { PencilIcon, CheckCircleIcon, XCircleIcon, TableCellsIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, PlusIcon, MinusIcon, ChevronLeftIcon, ChevronRightIcon, DocumentArrowDownIcon, FunnelIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon, TrashIcon, ExclamationTriangleIcon } from '../components/icons';
+import { DocumentArrowUpIcon } from '../components/icons';
 import CommentSection from '../components/CommentSection';
 import { Modal } from '../components/Modal';
 import { Spinner } from '../components/Spinner';
@@ -120,6 +121,13 @@ const ForecastPage: React.FC = () => {
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [pickerYear, setPickerYear] = useState(date.year);
     const pickerRef = useRef<HTMLDivElement>(null);
+
+    // Import modal state
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importFileName, setImportFileName] = useState<string>('');
+    const [importValidRows, setImportValidRows] = useState<any[]>([]);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [isImporting, setIsImporting] = useState(false);
 
     const isAdmin = user?.role === UserRole.Admin;
     
@@ -398,6 +406,175 @@ const ForecastPage: React.FC = () => {
         XLSX.writeFile(wb, `forecast_${date.year}_${String(date.month).padStart(2, '0')}.xlsx`);
     };
 
+    const openImportModal = () => {
+        setIsImportModalOpen(true);
+        setImportFileName('');
+        setImportValidRows([]);
+        setImportErrors([]);
+    };
+
+    const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const ext = file.name.toLowerCase().split('.').pop();
+        if (!ext || (ext !== 'xlsx' && ext !== 'xls')) {
+            addToast('Formato non supportato. Carica un file .xlsx o .xls', 'error');
+            return;
+        }
+        setImportFileName(file.name);
+        try {
+            const data = await file.arrayBuffer();
+            if (typeof XLSX === 'undefined') {
+                addToast('Parser Excel non disponibile', 'error');
+                return;
+            }
+            const wb = XLSX.read(data, { type: 'array' });
+            const wsName = wb.SheetNames[0];
+            const ws = wb.Sheets[wsName];
+            const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            if (!rows || rows.length === 0) {
+                setImportErrors(['Il file non contiene righe da importare.']);
+                setImportValidRows([]);
+                return;
+            }
+
+            // Rileva intestazioni
+            const headers = Object.keys(rows[0]);
+            const findHeader = (predicate: (h: string) => boolean) => headers.find(h => predicate(h.trim()));
+            const headerBU = findHeader(h => h.toLowerCase() === 'business unit');
+            const headerClient = findHeader(h => h.toLowerCase() === 'client');
+            const headerDeclared = findHeader(h => h.toLowerCase().startsWith('bdg dichiarato'));
+            const headerBudget = findHeader(h => h.toLowerCase() === 'bdg attivo');
+            const headerForecast = findHeader(h => h.toLowerCase() === 'fcast rolling');
+
+            const missing: string[] = [];
+            if (!headerBU) missing.push('Business Unit');
+            if (!headerClient) missing.push('Client');
+            if (!headerDeclared) missing.push('BDG Dichiarato');
+            if (!headerBudget) missing.push('BDG Attivo');
+            if (!headerForecast) missing.push('Fcast Rolling');
+            if (missing.length > 0) {
+                setImportErrors([`Struttura file non valida. Colonne mancanti: ${missing.join(', ')}`]);
+                setImportValidRows([]);
+                return;
+            }
+
+            // Prepara mappe per risoluzione nomi -> ID, gestendo clienti presenti in più BU
+            const clientsByName = new Map<string, any[]>();
+            clients.forEach((c: any) => {
+                const key = String(c.name).trim().toLowerCase();
+                const arr = clientsByName.get(key) || [];
+                arr.push(c);
+                clientsByName.set(key, arr);
+            });
+            const buByName = new Map(businessUnits.map(b => [b.name.trim().toLowerCase(), b]));
+
+            const newErrors: string[] = [];
+            const valid: any[] = [];
+
+            rows.forEach((r, idx) => {
+                const rowNum = idx + 2; // considerando intestazione alla linea 1
+                const buName = String(r[headerBU]).trim();
+                const clientName = String(r[headerClient]).trim();
+                const declared = Number(r[headerDeclared]);
+                const budget = Number(r[headerBudget]);
+                const forecast = Number(r[headerForecast]);
+
+                if (!clientName) {
+                    newErrors.push(`Riga ${rowNum}: Client mancante`);
+                    return;
+                }
+                const candidates = clientsByName.get(clientName.toLowerCase());
+                if (!candidates || candidates.length === 0) {
+                    newErrors.push(`Riga ${rowNum}: Cliente "${clientName}" non trovato`);
+                    return;
+                }
+
+                if (!buName) {
+                    newErrors.push(`Riga ${rowNum}: Business Unit mancante`);
+                    return;
+                }
+                const bu = buByName.get(buName.toLowerCase());
+                if (!bu) {
+                    newErrors.push(`Riga ${rowNum}: Business Unit "${buName}" non trovata`);
+                    return;
+                }
+                const client = candidates.find(c => c.businessUnitId === bu.id);
+                if (!client) {
+                    newErrors.push(`Riga ${rowNum}: Cliente "${clientName}" non associato alla BU "${buName}"`);
+                    return;
+                }
+
+                const numValid = (v: any) => typeof v === 'number' && !isNaN(v) && isFinite(v);
+                if (!numValid(declared) || declared < 0) {
+                    newErrors.push(`Riga ${rowNum}: BDG Dichiarato non valido`);
+                    return;
+                }
+                if (!numValid(budget) || budget < 0) {
+                    newErrors.push(`Riga ${rowNum}: BDG Attivo non valido`);
+                    return;
+                }
+                if (!numValid(forecast) || forecast < 0) {
+                    newErrors.push(`Riga ${rowNum}: Fcast Rolling non valido`);
+                    return;
+                }
+
+                valid.push({
+                    month: date.month,
+                    year: date.year,
+                    clientId: client.id,
+                    businessUnitId: bu.id,
+                    declaredBudget: declared,
+                    budget,
+                    forecast,
+                    userId: user?.id || ''
+                });
+            });
+
+            setImportErrors(newErrors);
+            setImportValidRows(valid);
+        } catch (err) {
+            console.error(err);
+            addToast('Errore nella lettura del file Excel', 'error');
+        }
+    };
+
+    const confirmImport = async () => {
+        if (!user) return;
+        if (importValidRows.length === 0) {
+            addToast('Nessuna riga valida da importare', 'warning');
+            return;
+        }
+        setIsImporting(true);
+        try {
+            const { upsertForecastsBulk } = await import('../services/supabaseApi');
+            // Deduplica per chiave di conflitto (month, year, clientId) aggregando i valori
+            const grouped = new Map<string, any>();
+            for (const v of importValidRows) {
+                const key = `${v.month}-${v.year}-${v.clientId}`;
+                const existing = grouped.get(key);
+                if (!existing) {
+                    grouped.set(key, { ...v });
+                } else {
+                    existing.declaredBudget = (Number(existing.declaredBudget) || 0) + (Number(v.declaredBudget) || 0);
+                    existing.budget = (Number(existing.budget) || 0) + (Number(v.budget) || 0);
+                    existing.forecast = (Number(existing.forecast) || 0) + (Number(v.forecast) || 0);
+                }
+            }
+            const deduped = Array.from(grouped.values()).map(v => ({ ...v, userId: user.id }));
+            const res = await upsertForecastsBulk(deduped);
+            addToast(`Import completato: ${res.count} righe`, 'success');
+            setIsImportModalOpen(false);
+            setImportValidRows([]);
+            setImportErrors([]);
+            fetchData();
+        } catch (error) {
+            addToast('Errore durante l\'importazione', 'error');
+        } finally {
+            setIsImporting(false);
+        }
+    };
+
     const requestSort = (key: SortConfig['key']) => {
         let direction: 'ascending' | 'descending' = 'ascending';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -466,6 +643,7 @@ const ForecastPage: React.FC = () => {
                     <div className="flex-grow"></div>
                     <div className="flex items-center gap-3">
                         <button onClick={handleExportXLS} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"><DocumentArrowDownIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" /> Export XLS</button>
+                        {isAdmin && <button onClick={openImportModal} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"><DocumentArrowUpIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" /> Import XLS</button>}
                         {isAdmin && <button onClick={handleOpenAddModal} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"><PlusIcon className="w-5 h-5" /> Add Forecast</button>}
                     </div>
                 </div>
@@ -613,6 +791,37 @@ const ForecastPage: React.FC = () => {
                 <div className="mt-6 flex justify-end space-x-2">
                     <button onClick={() => setForecastToDelete(null)} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500">Cancel</button>
                     <button onClick={handleConfirmDelete} disabled={isSubmitting} className="px-4 py-2 w-28 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-red-300 flex justify-center">{isSubmitting ? <Spinner/> : 'Delete'}</button>
+                </div>
+            </Modal>
+
+            {/* Import Forecast Modal */}
+            <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Importa Forecast da Excel">
+                <div className="space-y-4">
+                    <div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">Carica un file .xlsx/.xls con le colonne: Business Unit, Client, BDG Dichiarato, BDG Attivo, Fcast Rolling. I dati verranno importati per <span className="font-semibold">{date.month}/{date.year}</span>.</p>
+                        <input type="file" accept=".xlsx,.xls" onChange={handleImportFile} className="block w-full text-sm" />
+                        {importFileName && <p className="mt-1 text-xs text-slate-500">File selezionato: {importFileName}</p>}
+                    </div>
+                    <div className="rounded-md border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/30">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm">
+                                <span className="font-medium">Righe valide:</span> {importValidRows.length}
+                            </div>
+                            <div className="text-sm">
+                                <span className="font-medium">Errori:</span> {importErrors.length}
+                            </div>
+                        </div>
+                        {importErrors.length > 0 && (
+                            <ul className="mt-2 max-h-40 overflow-auto text-xs list-disc list-inside text-red-600 dark:text-red-400">
+                                {importErrors.slice(0, 8).map((err, i) => (<li key={i}>{err}</li>))}
+                                {importErrors.length > 8 && <li>... altri {importErrors.length - 8} errori</li>}
+                            </ul>
+                        )}
+                    </div>
+                    <div className="pt-2 flex justify-end gap-3">
+                        <button type="button" onClick={() => setIsImportModalOpen(false)} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-md hover:bg-slate-300 dark:hover:bg-slate-500">Annulla</button>
+                        <button type="button" disabled={isImporting || importValidRows.length === 0} onClick={confirmImport} className="px-4 py-2 w-32 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 flex justify-center">{isImporting ? <Spinner/> : 'Importa'}</button>
+                    </div>
                 </div>
             </Modal>
         </>

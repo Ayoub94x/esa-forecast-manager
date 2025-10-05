@@ -497,6 +497,55 @@ export const deleteForecast = async (forecastId: number): Promise<{ success: boo
   return { success: true };
 };
 
+// --- Import / Bulk Upsert API ---
+export interface ForecastUpsertRecord {
+  month: number;
+  year: number;
+  clientId: number;
+  businessUnitId: number;
+  declaredBudget: number;
+  budget: number;
+  forecast: number;
+  userId: string;
+}
+
+/**
+ * Esegue upsert in bulk sulla tabella forecasts, usando la chiave unica (month, year, client_id).
+ * Restituisce il numero di righe interessate e l'eventuale errore.
+ */
+export const upsertForecastsBulk = async (
+  records: ForecastUpsertRecord[]
+): Promise<{ success: boolean; count: number }> => {
+  if (!records || records.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const payload = records.map(r => ({
+    month: r.month,
+    year: r.year,
+    client_id: r.clientId,
+    business_unit_id: r.businessUnitId,
+    declared_budget: r.declaredBudget,
+    budget: r.budget,
+    forecast: r.forecast,
+    user_id: r.userId,
+    status: 'Bozza',
+    last_modified: new Date().toISOString()
+  }));
+
+  const { data, error } = await supabase
+    .from('forecasts')
+    .upsert(payload, { onConflict: 'month,year,client_id' })
+    .select('id');
+
+  if (error) {
+    console.error('Error bulk upserting forecasts:', error);
+    throw error;
+  }
+
+  return { success: true, count: (data || []).length };
+};
+
 // --- Comment API ---
 export const getCommentsByForecastId = async (forecastId: number): Promise<Comment[]> => {
   const { data: comments, error } = await supabase
