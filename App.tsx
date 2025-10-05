@@ -126,11 +126,13 @@ const Main: React.FC = () => {
                             <Route path="/login" element={<Navigate to="/" />} />
                             <Route path="/forecast" element={<ForecastPage />} />
 
-                            
+                            {/* Dashboard access for all authenticated users (Admin + Data Entry) */}
+                            <Route path="/dashboard" element={<DashboardPage />} />
+
+                            {/* Admin-only routes */}
                             <Route element={<AdminRoute />}>
-                                <Route path="/dashboard" element={<DashboardPage />} />
-                            <Route path="/admin/clients" element={<ClientManagementPage />} />
-                            <Route path="/admin/bus" element={<BusinessUnitManagementPage />} />
+                                <Route path="/admin/clients" element={<ClientManagementPage />} />
+                                <Route path="/admin/bus" element={<BusinessUnitManagementPage />} />
                             </Route>
 
                             <Route path="/" element={user.role === UserRole.Admin ? <Navigate to="/dashboard" /> : <Navigate to="/forecast" />} />

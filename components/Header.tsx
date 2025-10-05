@@ -70,7 +70,7 @@ const Header: React.FC = () => {
 
     const commonLinks = (
         <>
-            {user?.role === UserRole.Admin && (
+            {(user?.role === UserRole.Admin || user?.role === UserRole.DataEntry) && (
                 <NavLink 
                     to="/dashboard" 
                     className={({ isActive }) => `${navLinkClasses} ${isActive ? activeNavLinkClasses : ''}`}
